@@ -11,6 +11,11 @@ let dataProfil = {
 };
 let daftarKategoriCustom = [];
 let temaAktif = 'terang';
+let mataUangAktif = 'IDR';
+let ukuranFontAktif = 'sedang';
+let jenisFontAktif = 'default';
+let pinAktif = false;
+let pinKode = '';
 let databaseSiap = false;
 
 let indeksSlider = 0;
@@ -20,10 +25,31 @@ let sumberDanaAktif = 'offline';
 let kategoriTerpilih = '';
 let ikonTerpilih = 'fa-heart';
 let jenisGrafikAktif = 'pengeluaran';
-let bulanGrafikAktif = new Date().getMonth();
+let periodeGrafikAktif = null; // { tahun, bulan }
 let indeksEdit = null;
 let grafikDonat = null;
 let grafikGaris = null;
+
+const NAMA_BULAN = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+const DAFTAR_MATA_UANG = {
+    IDR: { kode: 'IDR', nama: 'Rupiah Indonesia', simbol: 'Rp' },
+    USD: { kode: 'USD', nama: 'US Dollar', simbol: '$' },
+    EUR: { kode: 'EUR', nama: 'Euro', simbol: '€' },
+    SGD: { kode: 'SGD', nama: 'Dollar Singapura', simbol: 'S$' },
+    MYR: { kode: 'MYR', nama: 'Ringgit Malaysia', simbol: 'RM' },
+    JPY: { kode: 'JPY', nama: 'Yen Jepang', simbol: '¥' }
+};
+const DAFTAR_UKURAN_FONT = {
+    kecil: { label: 'Kecil', ukuran: '14px' },
+    sedang: { label: 'Sedang', ukuran: '16px' },
+    besar: { label: 'Besar', ukuran: '18px' }
+};
+const DAFTAR_JENIS_FONT = {
+    default: { label: 'Default', nilai: "'Segoe UI', Roboto, sans-serif" },
+    modern: { label: 'Modern', nilai: "Arial, Helvetica, sans-serif" },
+    formal: { label: 'Formal', nilai: "Georgia, 'Times New Roman', serif" },
+    kode: { label: 'Monospace', nilai: "'Courier New', Consolas, monospace" }
+};
 
 const daftarIkonKategori = {
     'Parkir':'fa-car', 'Uang':'fa-money', 'Internet':'fa-wifi', 'Bensin':'fa-tint',
@@ -68,16 +94,113 @@ function keBigInt(nilai) {
     }
 }
 
+function simbolMataUang() {
+    return (DAFTAR_MATA_UANG[mataUangAktif] || DAFTAR_MATA_UANG.IDR).simbol;
+}
+
 function formatRupiah(angka) {
     try {
         const bi = typeof angka === 'bigint' ? angka : BigInt(String(angka).replace(/[^\d-]/g, '') || '0');
         const negatif = bi < 0n;
         const absolut = negatif ? -bi : bi;
         const titik = absolut.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-        return `${negatif ? '-' : ''}Rp${titik}`;
+        return `${negatif ? '-' : ''}${simbolMataUang()}${titik}`;
     } catch {
-        return 'Rp0';
+        return `${simbolMataUang()}0`;
     }
+}
+
+function kunciPeriode(tahun, bulan) {
+    return `${tahun}-${bulan}`;
+}
+
+function parseKunciPeriode(kunci) {
+    const [tahun, bulan] = String(kunci).split('-').map(Number);
+    return { tahun, bulan };
+}
+
+function ambilPeriodeDariTransaksi(jenis = null) {
+    const peta = new Map();
+    daftarTransaksi.forEach(t => {
+        if (jenis && t.jenis !== jenis) return;
+        const tgl = new Date(t.waktu);
+        if (Number.isNaN(tgl.getTime())) return;
+        const tahun = tgl.getFullYear();
+        const bulan = tgl.getMonth();
+        const kunci = kunciPeriode(tahun, bulan);
+        if (!peta.has(kunci)) peta.set(kunci, { tahun, bulan, kunci });
+    });
+    return Array.from(peta.values()).sort((a, b) => {
+        if (a.tahun !== b.tahun) return a.tahun - b.tahun;
+        return a.bulan - b.bulan;
+    });
+}
+
+function updateDaftarBulanGrafik() {
+    const wadah = document.getElementById('daftarPeriode');
+    const kosong = document.getElementById('kosongPeriode');
+    if (!wadah) return;
+
+    const daftar = ambilPeriodeDariTransaksi(jenisGrafikAktif);
+    wadah.innerHTML = '';
+
+    if (!daftar.length) {
+        periodeGrafikAktif = null;
+        if (kosong) kosong.style.display = 'block';
+        updateGrafik();
+        return;
+    }
+    if (kosong) kosong.style.display = 'none';
+
+    const kunciAktif = periodeGrafikAktif
+        ? kunciPeriode(periodeGrafikAktif.tahun, periodeGrafikAktif.bulan)
+        : null;
+    const masihAda = daftar.some(p => p.kunci === kunciAktif);
+    if (!masihAda) {
+        const sekarang = new Date();
+        const kunciSekarang = kunciPeriode(sekarang.getFullYear(), sekarang.getMonth());
+        periodeGrafikAktif = daftar.find(p => p.kunci === kunciSekarang) || daftar[daftar.length - 1];
+    }
+
+    daftar.forEach(p => {
+        const el = document.createElement('span');
+        el.dataset.tahun = String(p.tahun);
+        el.dataset.bulan = String(p.bulan);
+        el.textContent = `${NAMA_BULAN[p.bulan]} ${p.tahun}`;
+        if (periodeGrafikAktif && p.tahun === periodeGrafikAktif.tahun && p.bulan === periodeGrafikAktif.bulan) {
+            el.classList.add('aktif');
+        }
+        el.addEventListener('click', () => {
+            periodeGrafikAktif = { tahun: p.tahun, bulan: p.bulan };
+            updateDaftarBulanGrafik();
+        });
+        wadah.appendChild(el);
+    });
+
+    // Scroll ke item aktif
+    const aktif = wadah.querySelector('span.aktif');
+    if (aktif) aktif.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+
+    updateGrafik();
+}
+
+function terapkanPengaturanTampilan() {
+    const ukuran = DAFTAR_UKURAN_FONT[ukuranFontAktif] || DAFTAR_UKURAN_FONT.sedang;
+    const font = DAFTAR_JENIS_FONT[jenisFontAktif] || DAFTAR_JENIS_FONT.default;
+    document.documentElement.style.setProperty('--ukuran-font', ukuran.ukuran);
+    document.documentElement.style.setProperty('--font-utama', font.nilai);
+
+    const labelJumlah = document.getElementById('labelJumlah');
+    if (labelJumlah) labelJumlah.textContent = `Jumlah (${simbolMataUang()})`;
+
+    const ringkasUang = document.getElementById('ringkasMataUang');
+    if (ringkasUang) ringkasUang.textContent = mataUangAktif;
+
+    const ringkasFont = document.getElementById('ringkasFont');
+    if (ringkasFont) ringkasFont.textContent = ukuran.label;
+
+    const ringkasPrivasi = document.getElementById('ringkasPrivasi');
+    if (ringkasPrivasi) ringkasPrivasi.textContent = pinAktif ? 'PIN On' : 'Off';
 }
 
 function keAngkaGrafik(nilai) {
@@ -91,7 +214,12 @@ function ambilPayloadDatabase() {
         transaksi: daftarTransaksi,
         profil: dataProfil,
         kategoriCustom: daftarKategoriCustom,
-        tema: temaAktif
+        tema: temaAktif,
+        mataUang: mataUangAktif,
+        ukuranFont: ukuranFontAktif,
+        jenisFont: jenisFontAktif,
+        pinAktif,
+        pinKode
     };
 }
 
@@ -105,6 +233,11 @@ function terapkanData(data) {
     if (!dataProfil.avatar) dataProfil.avatar = AVATAR_DEFAULT;
     daftarKategoriCustom = Array.isArray(data?.kategoriCustom) ? data.kategoriCustom : [];
     temaAktif = data?.tema || 'terang';
+    mataUangAktif = data?.mataUang || 'IDR';
+    ukuranFontAktif = data?.ukuranFont || 'sedang';
+    jenisFontAktif = data?.jenisFont || 'default';
+    pinAktif = !!data?.pinAktif;
+    pinKode = data?.pinKode || '';
 }
 
 function simpanKeDatabase() {
@@ -440,41 +573,52 @@ function resetAvatarDefault() {
 }
 
 function updateGrafik() {
-    const dataBulan = daftarTransaksi.filter(t => {
+    const canvasDonat = document.getElementById('grafikKategori');
+    const canvasGaris = document.getElementById('grafikHarian');
+    if (!canvasDonat || !canvasGaris) return;
+
+    const dataBulan = (!periodeGrafikAktif) ? [] : daftarTransaksi.filter(t => {
         const tgl = new Date(t.waktu);
-        return tgl.getMonth() === bulanGrafikAktif && t.jenis === jenisGrafikAktif;
+        return tgl.getFullYear() === periodeGrafikAktif.tahun &&
+            tgl.getMonth() === periodeGrafikAktif.bulan &&
+            t.jenis === jenisGrafikAktif;
     });
 
     const kategoriData = {};
-    const harianData = Array(31).fill(0);
+    const hariDalamBulan = periodeGrafikAktif
+        ? new Date(periodeGrafikAktif.tahun, periodeGrafikAktif.bulan + 1, 0).getDate()
+        : 31;
+    const harianData = Array(hariDalamBulan).fill(0);
 
     dataBulan.forEach(t => {
         const tgl = new Date(t.waktu).getDate();
         const jml = keAngkaGrafik(t.jumlah);
-        harianData[tgl-1] += jml;
-        if(!kategoriData[t.kategori]) kategoriData[t.kategori] = 0;
+        if (tgl >= 1 && tgl <= hariDalamBulan) harianData[tgl - 1] += jml;
+        if (!kategoriData[t.kategori]) kategoriData[t.kategori] = 0;
         kategoriData[t.kategori] += jml;
     });
 
-    const labelHarian = Array.from({length:31}, (_,i) => i+1);
+    const labelHarian = Array.from({ length: hariDalamBulan }, (_, i) => i + 1);
 
-    if(grafikDonat) grafikDonat.destroy();
-    if(grafikGaris) grafikGaris.destroy();
+    if (grafikDonat) grafikDonat.destroy();
+    if (grafikGaris) grafikGaris.destroy();
 
-    grafikDonat = new Chart(document.getElementById('grafikKategori'), {
+    grafikDonat = new Chart(canvasDonat, {
         type: 'doughnut',
         data: {
-            labels: Object.keys(kategoriData),
+            labels: Object.keys(kategoriData).length ? Object.keys(kategoriData) : ['Tidak ada data'],
             datasets: [{
-                data: Object.values(kategoriData),
-                backgroundColor: Object.keys(kategoriData).map(k => warnaKategori[k] || '#94A3B8'),
+                data: Object.keys(kategoriData).length ? Object.values(kategoriData) : [1],
+                backgroundColor: Object.keys(kategoriData).length
+                    ? Object.keys(kategoriData).map(k => warnaKategori[k] || '#94A3B8')
+                    : ['#E5E7EB'],
                 borderWidth: 0
             }]
         },
         options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
     });
 
-    grafikGaris = new Chart(document.getElementById('grafikHarian'), {
+    grafikGaris = new Chart(canvasGaris, {
         type: 'line',
         data: {
             labels: labelHarian,
@@ -490,6 +634,81 @@ function updateGrafik() {
     });
 }
 
+function bukaModal(id) {
+    document.getElementById(id)?.classList.add('terbuka');
+}
+function tutupModal(id) {
+    document.getElementById(id)?.classList.remove('terbuka');
+}
+
+function renderOpsiMataUang() {
+    const wadah = document.getElementById('daftarMataUang');
+    if (!wadah) return;
+    wadah.innerHTML = Object.values(DAFTAR_MATA_UANG).map(m => `
+        <button type="button" class="opsi-pilih ${mataUangAktif === m.kode ? 'aktif' : ''}" data-uang="${m.kode}">
+            <span>${m.simbol} ${m.nama}</span>
+            <small>${m.kode}</small>
+        </button>
+    `).join('');
+    wadah.querySelectorAll('[data-uang]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            mataUangAktif = btn.dataset.uang;
+            jadwalkanSimpan();
+            terapkanPengaturanTampilan();
+            updateRiwayat();
+            updateLaporan();
+            updateDaftarBulanGrafik();
+            renderOpsiMataUang();
+        });
+    });
+}
+
+function renderOpsiFont() {
+    const wadahUkuran = document.getElementById('daftarUkuranFont');
+    const wadahJenis = document.getElementById('daftarJenisFont');
+    if (!wadahUkuran || !wadahJenis) return;
+
+    wadahUkuran.innerHTML = Object.entries(DAFTAR_UKURAN_FONT).map(([kode, item]) => `
+        <button type="button" class="opsi-pilih ${ukuranFontAktif === kode ? 'aktif' : ''}" data-ukuran="${kode}">
+            <span>${item.label}</span>
+            <small>${item.ukuran}</small>
+        </button>
+    `).join('');
+
+    wadahJenis.innerHTML = Object.entries(DAFTAR_JENIS_FONT).map(([kode, item]) => `
+        <button type="button" class="opsi-pilih ${jenisFontAktif === kode ? 'aktif' : ''}" data-font="${kode}" style="font-family:${item.nilai}">
+            <span>${item.label}</span>
+        </button>
+    `).join('');
+
+    wadahUkuran.querySelectorAll('[data-ukuran]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            ukuranFontAktif = btn.dataset.ukuran;
+            jadwalkanSimpan();
+            terapkanPengaturanTampilan();
+            renderOpsiFont();
+        });
+    });
+    wadahJenis.querySelectorAll('[data-font]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            jenisFontAktif = btn.dataset.font;
+            jadwalkanSimpan();
+            terapkanPengaturanTampilan();
+            renderOpsiFont();
+        });
+    });
+}
+
+function cekKunciPin() {
+    const layar = document.getElementById('layarPin');
+    if (!layar) return;
+    if (pinAktif && pinKode) {
+        layar.style.display = 'flex';
+    } else {
+        layar.style.display = 'none';
+    }
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     try {
         await muatDariDatabase();
@@ -500,11 +719,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     aturTema(temaAktif, false);
+    terapkanPengaturanTampilan();
     updateProfil();
     muatSemuaKategori();
     updateRiwayat();
     updateLaporan();
-    updateGrafik();
+    updateDaftarBulanGrafik();
+    cekKunciPin();
+    renderOpsiMataUang();
+    renderOpsiFont();
 
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('sw.js').catch(() => {});
@@ -524,7 +747,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             item.classList.add('aktif');
             document.getElementById(`halaman${item.dataset.halaman}`).classList.add('aktif');
             if(item.dataset.halaman === 'Laporan') updateLaporan();
-            if(item.dataset.halaman === 'Grafik') setTimeout(updateGrafik, 100);
+            if(item.dataset.halaman === 'Grafik') setTimeout(updateDaftarBulanGrafik, 100);
         });
     });
 
