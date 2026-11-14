@@ -1,7 +1,7 @@
 const AVATAR_DEFAULT = 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
 const UKURAN_AVATAR_MAX = 320;
 const UKURAN_FILE_MAX_MB = 5;
-const API_URL = '/api/data';
+const DB_KEY = 'moneyTrackerDB';
 
 let daftarTransaksi = [];
 let dataProfil = {
@@ -95,69 +95,100 @@ function ambilPayloadDatabase() {
     };
 }
 
-async function simpanKeDatabase() {
-    if (!databaseSiap) return;
-    const res = await fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(ambilPayloadDatabase())
-    });
-    if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || 'Gagal menyimpan ke money.json');
-    }
-}
-
-function jadwalkanSimpan() {
-    simpanKeDatabase().catch(err => {
-        console.error(err);
-        alert(err.message || 'Gagal menyimpan data ke money.json. Pastikan server.py sedang berjalan.');
-    });
-}
-
-function simpanData() { jadwalkanSimpan(); }
-function simpanProfil() {
-    return simpanKeDatabase().catch(err => {
-        throw new Error(err.message || 'Gagal menyimpan foto. Coba pakai gambar yang lebih kecil.');
-    });
-}
-function simpanKategori() { jadwalkanSimpan(); }
-
-async function muatDariDatabase() {
-    const res = await fetch(API_URL);
-    if (!res.ok) throw new Error('Gagal membaca money.json');
-    const data = await res.json();
-
-    daftarTransaksi = Array.isArray(data.transaksi) ? data.transaksi : [];
-    dataProfil = data.profil || {
+function terapkanData(data) {
+    daftarTransaksi = Array.isArray(data?.transaksi) ? data.transaksi : [];
+    dataProfil = data?.profil || {
         nama: 'Pengguna Money Tracking',
         kelamin: '',
         avatar: AVATAR_DEFAULT
     };
     if (!dataProfil.avatar) dataProfil.avatar = AVATAR_DEFAULT;
-    daftarKategoriCustom = Array.isArray(data.kategoriCustom) ? data.kategoriCustom : [];
-    temaAktif = data.tema || 'terang';
+    daftarKategoriCustom = Array.isArray(data?.kategoriCustom) ? data.kategoriCustom : [];
+    temaAktif = data?.tema || 'terang';
+}
 
-    // Migrasi sekali dari localStorage lama jika money.json masih kosong
+function simpanKeDatabase() {
+    if (!databaseSiap) return;
+    try {
+        localStorage.setItem(DB_KEY, JSON.stringify(ambilPayloadDatabase()));
+        // Sinkron kunci lama agar kompatibel
+        localStorage.setItem('dataKeuangan', JSON.stringify(daftarTransaksi));
+        localStorage.setItem('dataProfil', JSON.stringify(dataProfil));
+        localStorage.setItem('kategoriCustom', JSON.stringify(daftarKategoriCustom));
+        localStorage.setItem('temaPilihan', temaAktif);
+    } catch (err) {
+        console.error(err);
+        throw new Error('Gagal menyimpan ke localStorage. Ruang penyimpanan mungkin penuh (foto terlalu besar).');
+    }
+}
+
+function jadwalkanSimpan() {
+    try {
+        simpanKeDatabase();
+    } catch (err) {
+        alert(err.message || 'Gagal menyimpan data.');
+    }
+}
+
+function simpanData() { jadwalkanSimpan(); }
+function simpanProfil() {
+    return Promise.resolve().then(() => {
+        simpanKeDatabase();
+    }).catch(err => {
+        throw new Error(err.message || 'Gagal menyimpan foto. Coba pakai gambar yang lebih kecil.');
+    });
+}
+function simpanKategori() { jadwalkanSimpan(); }
+
+function muatDariLocalStorage() {
+    const mentah = localStorage.getItem(DB_KEY);
+    if (mentah) {
+        terapkanData(JSON.parse(mentah));
+        return true;
+    }
+
+    // Migrasi data lama (kunci terpisah)
     const lokalTransaksi = JSON.parse(localStorage.getItem('dataKeuangan') || '[]');
     const lokalProfil = JSON.parse(localStorage.getItem('dataProfil') || 'null');
     const lokalKategori = JSON.parse(localStorage.getItem('kategoriCustom') || '[]');
-    const perluMigrasi = daftarTransaksi.length === 0 && (
-        (Array.isArray(lokalTransaksi) && lokalTransaksi.length > 0) ||
+    const temaLokal = localStorage.getItem('temaPilihan');
+    const adaLama = (Array.isArray(lokalTransaksi) && lokalTransaksi.length > 0) ||
         lokalProfil ||
-        (Array.isArray(lokalKategori) && lokalKategori.length > 0)
-    );
+        (Array.isArray(lokalKategori) && lokalKategori.length > 0) ||
+        temaLokal;
 
-    if (perluMigrasi) {
-        if (Array.isArray(lokalTransaksi) && lokalTransaksi.length) daftarTransaksi = lokalTransaksi;
-        if (lokalProfil) dataProfil = { ...dataProfil, ...lokalProfil };
-        if (Array.isArray(lokalKategori) && lokalKategori.length) daftarKategoriCustom = lokalKategori;
-        const temaLokal = localStorage.getItem('temaPilihan');
-        if (temaLokal) temaAktif = temaLokal;
+    if (!adaLama) return false;
+
+    terapkanData({
+        transaksi: lokalTransaksi || [],
+        profil: lokalProfil || undefined,
+        kategoriCustom: lokalKategori || [],
+        tema: temaLokal || 'terang'
+    });
+    return true;
+}
+
+async function muatDariDatabase() {
+    const adaLokal = muatDariLocalStorage();
+
+    // Jika localStorage kosong, coba impor sekali dari money.json (opsional)
+    if (!adaLokal) {
+        try {
+            const res = await fetch('money.json', { cache: 'no-store' });
+            if (res.ok) {
+                const data = await res.json();
+                const adaData = (Array.isArray(data.transaksi) && data.transaksi.length) ||
+                    data.profil ||
+                    (Array.isArray(data.kategoriCustom) && data.kategoriCustom.length);
+                if (adaData) terapkanData(data);
+            }
+        } catch (_) {
+            // Abaikan: mode file/aplikasi tanpa server tetap jalan
+        }
     }
 
     databaseSiap = true;
-    if (perluMigrasi) await simpanKeDatabase();
+    simpanKeDatabase();
 }
 
 function hitungSaldo() {
@@ -464,8 +495,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         await muatDariDatabase();
     } catch (err) {
         console.error(err);
-        alert('Tidak bisa membaca money.json.\nJalankan dulu file jalankan.bat atau: py server.py\nlalu buka http://127.0.0.1:5500');
-        return;
+        databaseSiap = true;
+        terapkanData({});
     }
 
     aturTema(temaAktif, false);
@@ -474,6 +505,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateRiwayat();
     updateLaporan();
     updateGrafik();
+
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js').catch(() => {});
+    }
 
     // Tombol Tema
     document.getElementById('toggleTema').addEventListener('click', () => {
