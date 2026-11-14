@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Money Tracking</title>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- === HALAMAN BERANDA === -->
+        <div class="halaman aktif" id="halamanBeranda">
+            <div class="wadah-toggle-tema">
+                <button class="tombol-tema-switch" id="toggleTema">
+                    <div class="lingkaran-switch">
+                        <i class="fa fa-sun-o ikon-switch" id="ikonSwitch"></i>
+                    </div>
+                </button>
+            </div>
+
+            <div class="kartu-saldo">
+                <h3><i class="fa fa-money"></i>Uang Cash</h3>
+                <p class="jumlah-saldo" id="saldoOffline">Rp 0</p>
+            </div>
+            <div class="kartu-saldo">
+                <h3><i class="fa fa-credit-card"></i> Saldo E-Wallet</h3>
+                <p class="jumlah-saldo" id="saldoEwallet">Rp 0</p>
+            </div>
+
+            <div style="margin-bottom:16px;">
+                <h3 style="margin-bottom:12px;">Riwayat Transaksi</h3>
+                <div class="tab-sumber">
+                    <button class="aktif" id="btnRiwayatOffline">Uang Cash</button>
+                    <button id="btnRiwayatEwallet">Saldo E-Wallet</button>
+                </div>
+            </div>
+
+            <div class="kotak-riwayat">
+                <div id="daftarTransaksi" class="daftar-transaksi">
+                    <div class="kosong">
+                        <i class="fa fa-folder-open"></i>
+                        <p>Belum ada transaksi</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- === HALAMAN GRAFIK === -->
+        <div class="halaman" id="halamanGrafik">
+            <h2 style="margin-bottom:12px;">Grafik Keuangan</h2>
+            <div class="tab-jenis">
+                <button class="aktif" id="btnGrafikPengeluaran">Pengeluaran</button>
+                <button id="btnGrafikPemasukan">Pemasukan</button>
+            </div>
+
+            <div class="periode daftar-bulan" id="daftarPeriode">
+                <span data-bulan="3">Apr 2026</span>
+                <span data-bulan="4">Mei 2026</span>
+                <span data-bulan="5">Juni 2026</span>
+                <span class="aktif" data-bulan="6">Juli 2026</span>
+                <span data-bulan="7">Agustus 2026</span>
+                <span data-bulan="8">September 2026</span>
+            </div>
+
+            <div class="wadah-slider">
+                <div class="slider" id="sliderGrafik">
+                    <div class="halaman-slider">
+                        <div class="wadah-grafik-donat">
+                            <canvas id="grafikKategori"></canvas>
+                        </div>
+                    </div>
+                    <div class="halaman-slider">
+                        <div class="wadah-grafik-garis">
+                            <canvas id="grafikHarian"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="indikator-slider">
+                    <div class="titik-indikator aktif" data-indeks="0"></div>
+                    <div class="titik-indikator" data-indeks="1"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- === HALAMAN LAPORAN === -->
+        <div class="halaman" id="halamanLaporan">
+            <h2 style="margin-bottom:12px;">Analisis & Statistik</h2>
+            <div class="kartu-laporan">
+                <div class="item-laporan">
+                    <span>Saldo E-Wallet</span>
+                    <span id="lapOffline">Rp 0</span>
+                </div>
+                <div class="item-laporan">
+                    <span>Saldo E-Wallet</span>
+                    <span id="lapEwallet">Rp 0</span>
+                </div>
+                <div class="item-laporan garis-bawah">
+                    <span>Total Keseluruhan</span>
+                    <span id="lapTotal">Rp 0</span>
+                </div>
+                <div class="item-laporan">
+                    <span>Total Pemasukan Bulan Ini</span>
+                    <span class="text-pemasukan" id="lapMasuk">Rp 0</span>
+                </div>
+                <div class="item-laporan">
+                    <span>Total Pengeluaran Bulan Ini</span>
+                    <span class="text-pengeluaran" id="lapKeluar">Rp 0</span>
+                </div>
+                <div class="item-laporan garis-bawah">
+                    <span>Selisih Bulan Ini</span>
+                    <span id="lapSelisih">Rp 0</span>
+                </div>
+                <div class="item-laporan">
+                    <span>Rata-rata Pengeluaran Harian</span>
+                    <span id="lapRataKeluar">Rp 0</span>
+                </div>
+                <div class="item-laporan">
+                    <span>Rata-rata Pemasukan Harian</span>
+                    <span id="lapRataMasuk">Rp 0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- === HALAMAN SAYA === -->
+        <div class="halaman" id="halamanSaya">
+            <h2 style="margin-bottom:16px;">Pengaturan Akun</h2>
+            <div class="kartu-profil">
+                <div class="wadah-avatar" id="areaAvatar" title="Ketuk untuk ganti foto">
+                    <img id="avatarProfil" src="https://cdn-icons-png.flaticon.com/512/149/149071.png" alt="Avatar">
+                    <button type="button" class="tombol-ganti-avatar" id="btnGantiAvatar" aria-label="Ganti foto">
+                        <i class="fa fa-camera"></i>
+                    </button>
+                    <input type="file" id="inputAvatar" accept="image/*" style="display:none;">
+                </div>
+                <div class="info-profil">
+                    <h3 id="namaProfil">Pengguna Money Tracking</h3>
+                    <p id="kelaminProfil">Belum diatur</p>
+                    <div class="aksi-profil">
+                        <button class="btn-edit-profil" id="btnEditProfil">Ubah Profil</button>
+                        <button class="btn-ganti-foto" id="btnGantiFoto">Ganti Foto</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="daftar-menu">
+                <div class="item-menu">
+                    <i class="fa fa-money"></i>
+                    <span>Pengaturan Mata Uang</span>
+                    <i class="fa fa-chevron-right"></i>
+                </div>
+                <div class="item-menu">
+                    <i class="fa fa-font"></i>
+                    <span>Pengaturan Font</span>
+                    <i class="fa fa-chevron-right"></i>
+                </div>
+                <div class="item-menu">
+                    <i class="fa fa-shield"></i>
+                    <span>Privasi & Keamanan</span>
+                    <i class="fa fa-chevron-right"></i>
+                </div>
+                <div class="item-menu">
+                    <i class="fa fa-info-circle"></i>
+                    <span>Tentang Aplikasi</span>
+                    <i class="fa fa-chevron-right"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- NAVIGASI BAWAH -->
+    <div class="nav-bawah">
+        <div class="nav-item aktif" data-halaman="Beranda">
+            <i class="fa fa-home"></i>
+            <span>Beranda</span>
+        </div>
+        <div class="nav-item" data-halaman="Grafik">
+            <i class="fa fa-pie-chart"></i>
+            <span>Grafik</span>
+        </div>
+        <div class="tombol-tambah-tengah" id="btnBukaTambah">+</div>
+        <div class="nav-item" data-halaman="Laporan">
+            <i class="fa fa-file-text-o"></i>
+            <span>Laporan</span>
+        </div>
+        <div class="nav-item" data-halaman="Saya">
+            <i class="fa fa-user-o"></i>
+            <span>Saya</span>
+        </div>
+    </div>
+
+    <!-- MODAL TAMBAH TRANSAKSI -->
+    <div class="modal-tambah" id="modalTambah">
+        <div class="header-modal">
+            <button id="btnTutupModal" class="tombol-silang">&times;</button>
+            <h2 id="judulModalTransaksi">Tambah Transaksi</h2>
+            <span></span>
+        </div>
+
+        <div class="tab-transaksi">
+            <button class="aktif" data-tab="pengeluaran">Pengeluaran</button>
+            <button data-tab="pemasukan">Pemasukan</button>
+        </div>
+
+        <div class="grup-form">
+            <label class="label-form">Sumber Dana</label>
+            <div class="tab-transaksi">
+                <button class="aktif" data-sumber="offline">Uang Offline</button>
+                <button data-sumber="ewallet">Saldo E-Wallet</button>
+            </div>
+        </div>
+
+        <div class="grup-form">
+            <label class="label-form">Jumlah (Rp)</label>
+            <input type="text" id="jumlah" class="input-biasa" inputmode="numeric" autocomplete="off" placeholder="Contoh: 1000000" required>
+        </div>
+
+        <div class="grup-form">
+            <label class="label-form">Catatan Tambahan</label>
+            <input type="text" id="catatan" class="input-biasa" placeholder="Tulis keterangan...">
+        </div>
+
+        <div class="grup-form">
+            <label class="label-form">Pilih Kategori</label>
+            <div class="grid-kategori daftar-kategori" id="daftarKategoriPilih"></div>
+        </div>
+
+        <button class="tombol-simpan" id="btnSimpanTransaksi">Simpan Transaksi</button>
+    </div>
+
+    <!-- MODAL TAMBAH KATEGORI BARU -->
+    <div class="modal-tambah" id="modalKategori">
+        <div class="header-modal">
+            <button id="btnTutupKategori" class="tombol-silang">&times;</button>
+            <h2>Tambah Kategori Baru</h2>
+            <span></span>
+        </div>
+        <div class="grup-form">
+            <label class="label-form">Nama Kategori</label>
+            <input type="text" id="namaKategoriBaru" class="input-biasa" placeholder="Contoh: Langganan">
+        </div>
+        <div class="grup-form">
+            <label class="label-form">Pilih Ikon</label>
+            <div class="grid-kategori" id="pilihIkon">
+                <div class="item-kategori" data-ikon="fa-heart"><i class="fa fa-heart"></i></div>
+                <div class="item-kategori" data-ikon="fa-home"><i class="fa fa-home"></i></div>
+                <div class="item-kategori" data-ikon="fa-gift"><i class="fa fa-gift"></i></div>
+                <div class="item-kategori" data-ikon="fa-medkit"><i class="fa fa-medkit"></i></div>
+                <div class="item-kategori" data-ikon="fa-book"><i class="fa fa-book"></i></div>
+                <div class="item-kategori" data-ikon="fa-plane"><i class="fa fa-plane"></i></div>
+                <div class="item-kategori" data-ikon="fa-bank"><i class="fa fa-bank"></i></div>
+                <div class="item-kategori" data-ikon="fa-briefcase"><i class="fa fa-briefcase"></i></div>
+                <div class="item-kategori" data-ikon="fa-gamepad"><i class="fa fa-gamepad"></i></div>
+                <div class="item-kategori" data-ikon="fa-car"><i class="fa fa-car"></i></div>
+                <div class="item-kategori" data-ikon="fa-cutlery"><i class="fa fa-cutlery"></i></div>
+                <div class="item-kategori" data-ikon="fa-shopping-bag"><i class="fa fa-shopping-bag"></i></div>
+            </div>
+        </div>
+        <button class="tombol-simpan" id="btnSimpanKategori">Simpan Kategori</button>
+    </div>
+
+    <!-- MODAL EDIT PROFIL -->
+    <div class="modal-tambah" id="modalProfil">
+        <div class="header-modal">
+            <button id="btnTutupProfil" class="tombol-silang">&times;</button>
+            <h2>Ubah Data Diri</h2>
+            <button id="btnSimpanProfil">Simpan</button>
+        </div>
+        <div class="grup-form grup-foto-profil">
+            <label class="label-form">Foto Profil</label>
+            <div class="preview-foto-profil">
+                <img id="previewAvatarModal" src="https://cdn-icons-png.flaticon.com/512/149/149071.png" alt="Preview avatar">
+                <div class="aksi-foto-modal">
+                    <button type="button" class="tombol-simpan" id="btnPilihFotoModal">Pilih Foto Custom</button>
+                    <button type="button" class="btn-reset-foto" id="btnResetFoto">Kembalikan Default</button>
+                </div>
+            </div>
+            <p class="petunjuk-foto">Pilih gambar dari galeri atau kamera. Foto disimpan di perangkat ini.</p>
+        </div>
+        <div class="grup-form">
+            <label class="label-form">Nama Lengkap</label>
+            <input type="text" id="inputNama" class="input-biasa" placeholder="Masukkan nama kamu">
+        </div>
+        <div class="grup-form">
+            <label class="label-form">Jenis Kelamin</label>
+            <select id="inputKelamin" class="input-biasa">
+                <option value="">Pilih Jenis Kelamin</option>
+                <option value="Laki-laki">Laki-laki</option>
+                <option value="Perempuan">Perempuan</option>
+                <option value="Lainnya">Lainnya</option>
+            </select>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
