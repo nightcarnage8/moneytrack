@@ -60,14 +60,8 @@
                 <button id="btnGrafikPemasukan">Pemasukan</button>
             </div>
 
-            <div class="periode daftar-bulan" id="daftarPeriode">
-                <span data-bulan="3">Apr 2026</span>
-                <span data-bulan="4">Mei 2026</span>
-                <span data-bulan="5">Juni 2026</span>
-                <span class="aktif" data-bulan="6">Juli 2026</span>
-                <span data-bulan="7">Agustus 2026</span>
-                <span data-bulan="8">September 2026</span>
-            </div>
+            <div class="periode daftar-bulan" id="daftarPeriode"></div>
+            <p class="kosong-periode" id="kosongPeriode" style="display:none;">Belum ada data untuk ditampilkan</p>
 
             <div class="wadah-slider">
                 <div class="slider" id="sliderGrafik">
@@ -94,11 +88,11 @@
             <h2 style="margin-bottom:12px;">Analisis & Statistik</h2>
             <div class="kartu-laporan">
                 <div class="item-laporan">
-                    <span>Saldo E-Wallet</span>
+                    <span>Saldo Offline</span>
                     <span id="lapOffline">Rp 0</span>
                 </div>
                 <div class="item-laporan">
-                    <span>Saldo E-Wallet</span>
+                    <span>Saldo E-Wallet / Bank</span>
                     <span id="lapEwallet">Rp 0</span>
                 </div>
                 <div class="item-laporan garis-bawah">
@@ -150,22 +144,25 @@
             </div>
 
             <div class="daftar-menu">
-                <div class="item-menu">
+                <div class="item-menu" id="menuMataUang" role="button" tabindex="0">
                     <i class="fa fa-money"></i>
                     <span>Pengaturan Mata Uang</span>
+                    <small id="ringkasMataUang">IDR</small>
                     <i class="fa fa-chevron-right"></i>
                 </div>
-                <div class="item-menu">
+                <div class="item-menu" id="menuFont" role="button" tabindex="0">
                     <i class="fa fa-font"></i>
                     <span>Pengaturan Font</span>
+                    <small id="ringkasFont">Sedang</small>
                     <i class="fa fa-chevron-right"></i>
                 </div>
-                <div class="item-menu">
+                <div class="item-menu" id="menuPrivasi" role="button" tabindex="0">
                     <i class="fa fa-shield"></i>
                     <span>Privasi & Keamanan</span>
+                    <small id="ringkasPrivasi">Off</small>
                     <i class="fa fa-chevron-right"></i>
                 </div>
-                <div class="item-menu">
+                <div class="item-menu" id="menuTentang" role="button" tabindex="0">
                     <i class="fa fa-info-circle"></i>
                     <span>Tentang Aplikasi</span>
                     <i class="fa fa-chevron-right"></i>
@@ -217,7 +214,7 @@
         </div>
 
         <div class="grup-form">
-            <label class="label-form">Jumlah (Rp)</label>
+            <label class="label-form" id="labelJumlah">Jumlah (Rp)</label>
             <input type="text" id="jumlah" class="input-biasa" inputmode="numeric" autocomplete="off" placeholder="Contoh: 1000000" required>
         </div>
 
@@ -263,6 +260,94 @@
             </div>
         </div>
         <button class="tombol-simpan" id="btnSimpanKategori">Simpan Kategori</button>
+    </div>
+
+    <!-- MODAL MATA UANG -->
+    <div class="modal-tambah" id="modalMataUang">
+        <div class="header-modal">
+            <button id="btnTutupMataUang" class="tombol-silang">&times;</button>
+            <h2>Pengaturan Mata Uang</h2>
+            <span></span>
+        </div>
+        <div class="grup-form">
+            <label class="label-form">Pilih Mata Uang</label>
+            <div class="daftar-opsi" id="daftarMataUang"></div>
+        </div>
+    </div>
+
+    <!-- MODAL FONT -->
+    <div class="modal-tambah" id="modalFont">
+        <div class="header-modal">
+            <button id="btnTutupFont" class="tombol-silang">&times;</button>
+            <h2>Pengaturan Font</h2>
+            <span></span>
+        </div>
+        <div class="grup-form">
+            <label class="label-form">Ukuran Teks</label>
+            <div class="daftar-opsi" id="daftarUkuranFont"></div>
+        </div>
+        <div class="grup-form">
+            <label class="label-form">Jenis Font</label>
+            <div class="daftar-opsi" id="daftarJenisFont"></div>
+        </div>
+    </div>
+
+    <!-- MODAL PRIVASI -->
+    <div class="modal-tambah" id="modalPrivasi">
+        <div class="header-modal">
+            <button id="btnTutupPrivasi" class="tombol-silang">&times;</button>
+            <h2>Privasi & Keamanan</h2>
+            <span></span>
+        </div>
+        <div class="grup-form">
+            <label class="label-form">Kunci PIN Aplikasi</label>
+            <div class="baris-switch">
+                <span>Aktifkan PIN saat membuka aplikasi</span>
+                <input type="checkbox" id="togglePin">
+            </div>
+        </div>
+        <div class="grup-form" id="grupAturPin">
+            <label class="label-form">Atur PIN (4 digit)</label>
+            <input type="password" id="inputPinBaru" class="input-biasa" inputmode="numeric" maxlength="4" placeholder="••••">
+            <input type="password" id="inputPinKonfirmasi" class="input-biasa" inputmode="numeric" maxlength="4" placeholder="Ulangi PIN" style="margin-top:8px;">
+            <button type="button" class="tombol-simpan" id="btnSimpanPin" style="margin-top:12px;">Simpan PIN</button>
+        </div>
+        <div class="grup-form">
+            <label class="label-form">Data Lokal</label>
+            <p class="petunjuk-foto">Semua data keuangan disimpan di perangkat ini (localStorage), tidak dikirim ke server.</p>
+            <button type="button" class="btn-bahaya" id="btnHapusSemuaData">Hapus Semua Data</button>
+        </div>
+    </div>
+
+    <!-- MODAL TENTANG -->
+    <div class="modal-tambah" id="modalTentang">
+        <div class="header-modal">
+            <button id="btnTutupTentang" class="tombol-silang">&times;</button>
+            <h2>Tentang Aplikasi</h2>
+            <span></span>
+        </div>
+        <div class="kartu-tentang">
+            <h3>Money Tracking</h3>
+            <p>Versi 1.0.0</p>
+            <p>Aplikasi pencatat pemasukan & pengeluaran sederhana untuk penggunaan pribadi.</p>
+            <ul>
+                <li>Catat transaksi offline & e-wallet</li>
+                <li>Grafik otomatis per bulan aktif</li>
+                <li>Data tersimpan aman di perangkat</li>
+            </ul>
+            <p class="petunjuk-foto">Dibuat untuk kebutuhan tracking keuangan harian.</p>
+        </div>
+    </div>
+
+    <!-- LAYAR KUNCI PIN -->
+    <div class="layar-pin" id="layarPin" style="display:none;">
+        <div class="kotak-pin">
+            <h2>Masukkan PIN</h2>
+            <p>Buka Money Tracking</p>
+            <input type="password" id="inputPinMasuk" class="input-biasa" inputmode="numeric" maxlength="4" placeholder="••••">
+            <button type="button" class="tombol-simpan" id="btnBukaPin">Buka</button>
+            <p class="teks-error-pin" id="errorPin" style="display:none;">PIN salah</p>
+        </div>
     </div>
 
     <!-- MODAL EDIT PROFIL -->
